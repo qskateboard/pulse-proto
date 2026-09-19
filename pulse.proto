@@ -1,0 +1,145 @@
+syntax = "proto3";
+package robin.pulse.v1;
+
+// Pulse: live transaction stream for Robinhood Chain with three commitment levels.
+//   RECEIVED  - the transaction as accepted by the sequencer, before execution
+//               (hash, to, value, input, raw_tx, feed_sequence). Logs are synthetic markers.
+//   PROCESSED - executed (real logs, gas, success); the block is not yet sealed.
+//   CONFIRMED - the block is sealed and canonical.
+// A subscription delivers every matching transaction once, at its chosen level. BlockStatus messages
+// report when a block is sealed or a processed block is invalidated, so PROCESSED consumers can reconcile.
+// There is no replay and no exactly-once guarantee: after a reconnect, reconcile via RPC.
+service Pulse {
+  rpc Subscribe(stream SubscribeRequest) returns (stream SubscribeUpdate);
+}
+
+// PROCESSED is the zero value: a subscription that does not set a level gets PROCESSED.
+enum Commitment {
+  PROCESSED = 0;
+  CONFIRMED = 1;
+  RECEIVED = 2;
+}
+
+message SubscribeRequest {
+  uint64 request_id = 1;
+  oneof action {
+    Subscription replace = 2;
+    uint64 ping = 3;
+  }
+}
+message Subscription {
+  // Named filters are OR'ed; conditions inside one filter are AND'ed.
+  // {"all": {}} selects every transaction, including transactions without logs.
+  // An empty map pauses delivery. replace atomically replaces all filters.
+  map<string, TransactionFilter> transactions = 1;
+  // Level at which transactions are delivered (default PROCESSED).
+  Commitment commitment = 2;
+}
+message TransactionFilter {
+  // Matching is scoped to LOG EMITTER addresses. Raw 20-byte addresses.
+  // A matching transaction is delivered with ALL its logs.
+  repeated bytes address_include = 1;  // empty, or ANY emitter matches
+  repeated bytes address_exclude = 2;  // NONE of the emitters may match
+  repeated bytes address_required = 3; // ALL listed emitters must occur
+  optional bool failed = 4;
+  optional bytes transaction_hash = 5; // raw 32-byte hash
+}
+message SubscribeUpdate {
+  // Names of the filters this update matched.
+  repeated string filters = 1;
+  // Changes when the server restarts; sequence then starts over. sequence counts all source events,
+  // including filtered-out ones, so sequence gaps alone do not imply loss.
+  bytes stream_epoch = 2;
+  uint64 sequence = 3;
+  oneof update {
+    Transaction transaction = 4;
+    SubscriptionAck ack = 5;
+    Pong pong = 6;
+    BlockStatus block_status = 7;
+    // Availability of the source behind a level. Sent to subscriptions at the RECEIVED level when that
+    // source disconnects or reconnects: a reconciliation boundary for RECEIVED events.
+    // PROCESSED and CONFIRMED delivery continues.
+    SourceStatus source_status = 8;
+  }
+}
+message SourceStatus {
+  Commitment commitment = 1;
+  bool connected = 2;
+  // Increments on every reconnect of that source; events before and after may overlap or gap.
+  uint64 source_epoch = 3;
+}
+message SubscriptionAck {
+  uint64 request_id = 1;
+  // All updates after this ACK use this subscription until the next ACK.
+  uint32 filter_count = 2;
+  // Level in effect after this ACK.
+  Commitment commitment = 3;
+}
+message Pong { uint64 request_id = 1; uint64 id = 2; }
+message BlockStatus {
+  uint64 block_number = 1;
+  bytes block_hash = 2;      // empty until the block is sealed
+  uint64 feed_sequence = 3;  // 0 if unknown
+  enum Status { SEALED = 0; INVALIDATED = 1; }
+  Status status = 4;
+  // Transaction count of the sealed block (0 if unknown).
+  uint32 transaction_count = 5;
+  // False when PROCESSED events did not cover every transaction of the block (the stream attached
+  // mid-block): CONFIRMED delivery for this block is incomplete.
+  bool coverage_complete = 6;
+  // Execution attempt at this height; see Transaction.attempt.
+  uint32 attempt = 7;
+  // Header fields of the sealed block (empty or 0 on INVALIDATED), so a consumer can complete the
+  // block header without an RPC round trip.
+  bytes parent_hash = 8;
+  uint64 timestamp = 9;
+  uint64 base_fee_per_gas = 10;
+}
+message Transaction {
+  uint64 block_number = 1;
+  uint64 transaction_index = 2;
+  bytes transaction_hash = 3;
+  bytes frontier_id = 4;
+  uint64 gas_used = 5;
+  bool success = 6;
+  // FEED: a RECEIVED-level event, not executed. The same transaction is delivered as USER at
+  // PROCESSED and CONFIRMED level to subscriptions at those levels.
+  enum Kind { START_BLOCK = 0; USER = 1; SCHEDULED_RETRY = 2; FEED = 3; }
+  Kind kind = 7;
+  repeated Log logs = 8;
+  // Always true. PROCESSED events can be invalidated by a BlockStatus INVALIDATED message.
+  bool precanonical = 9;
+  // RECEIVED events: callee and calldata, feed sequence number, provisional = true.
+  bytes to = 10;
+  bytes input = 11;
+  uint64 feed_sequence = 12;
+  bool provisional = 13;
+  // Level this event was delivered at.
+  Commitment commitment = 14;
+  // Execution attempt at this block height (0 = first). PROCESSED events of an attempt that is later
+  // INVALIDATED must be dropped; the next attempt re-publishes with attempt + 1.
+  uint32 attempt = 15;
+  // RECEIVED events only: the signed transaction exactly as the sequencer carries it (typed envelope,
+  // what eth_sendRawTransaction takes) and its value (big-endian, no leading zeros, empty = 0).
+  // Sender recovery is left to the consumer. Empty on other levels.
+  bytes raw_tx = 16;
+  bytes value = 17;
+  // RECEIVED events only: the block timestamp (seconds) and the L1 block number from the header of the
+  // feed message that carries the block. Both are known before the first transaction of the block is
+  // delivered, so a consumer that needs execution context does not have to wait for anything else.
+  // 0 when the header could not be read.
+  uint64 timestamp = 18;
+  uint64 l1_block_number = 19;
+}
+message Log {
+  bytes address = 1;
+  repeated bytes topics = 2;
+  bytes data = 3;
+  // On RECEIVED events logs are synthetic markers: 0xFFFFFFFF carries the callee address,
+  // 0xFFFFFFFE a predicted Uniswap V4 PoolManager Swap for callees that recently emitted real Swaps.
+  // On PROCESSED and CONFIRMED events this is the index of the log within the transaction.
+  uint32 transaction_log_index = 4;
+  // Block-wide log index (eth_getLogs logIndex) on PROCESSED and CONFIRMED events.
+  // 0xFFFFFFFF when unknown (stream attached mid-block) and on RECEIVED synthetic logs.
+  uint32 log_index = 5;
+}
