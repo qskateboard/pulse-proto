@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.2.0 — 2026-09-20
+
+- `Pulse.SendTransaction`: submit a signed transaction through Eira and, with `wait_for_received`,
+  receive its `feed_sequence` and `transaction_index` as soon as it is observed at `RECEIVED` level.
+  New messages `SendTransactionRequest`, `SendTransactionResponse`, `ReceivedPosition`. Error
+  semantics are documented on the messages. Available on plans that include sending.
+
 ## v1.1.0 — 2026-09-19
 
 - `Transaction.timestamp` (18) and `Transaction.l1_block_number` (19) on `RECEIVED` events: block

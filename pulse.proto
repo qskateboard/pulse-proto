@@ -11,6 +11,37 @@ package robin.pulse.v1;
 // There is no replay and no exactly-once guarantee: after a reconnect, reconcile via RPC.
 service Pulse {
   rpc Subscribe(stream SubscribeRequest) returns (stream SubscribeUpdate);
+  // Submit a signed transaction to the sequencer through Eira and, optionally, wait until it is
+  // observed at RECEIVED level, in which case its position in the block is returned.
+  rpc SendTransaction(SendTransactionRequest) returns (SendTransactionResponse);
+}
+
+message SendTransactionRequest {
+  bytes raw_transaction = 1;      // signed transaction bytes (typed envelope), signed by the client
+  bool wait_for_received = 2;     // wait for the RECEIVED observation before answering
+  uint32 received_timeout_ms = 3; // 0 = 3000 ms; at most 10000 ms; counted after the submission is accepted
+}
+// Errors: INVALID_ARGUMENT / FAILED_PRECONDITION carry the sequencer's own rejection text, and the
+// transaction was not sequenced. UNAVAILABLE "submission outcome unknown" means the submission may
+// still have been sequenced: the transaction hash is in the `x-eira-transaction-hash` response header,
+// check the receipt before reusing the nonce. RESOURCE_EXHAUSTED is the per-plan send rate.
+message SendTransactionResponse {
+  reserved 2, 3, 4, 7;
+  bytes transaction_hash = 1;
+  enum WaitStatus {
+    NOT_REQUESTED = 0;
+    OBSERVED = 1;           // `received` is set
+    TIMED_OUT = 2;          // accepted, not observed within the timeout
+    SOURCE_UNAVAILABLE = 3; // accepted, the RECEIVED level was unavailable while waiting
+  }
+  WaitStatus wait_status = 5;
+  ReceivedPosition received = 6; // only when wait_status is OBSERVED; execution is verified via the receipt
+}
+message ReceivedPosition {
+  reserved 3, 4, 5;
+  uint64 feed_sequence = 1;     // block, as on RECEIVED events
+  uint64 transaction_index = 2; // position in the block, as on RECEIVED events
+  uint64 block_timestamp = 6;   // block timestamp in seconds
 }
 
 // PROCESSED is the zero value: a subscription that does not set a level gets PROCESSED.
