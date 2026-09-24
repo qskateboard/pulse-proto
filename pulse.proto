@@ -65,6 +65,11 @@ message Subscription {
   map<string, TransactionFilter> transactions = 1;
   // Level at which transactions are delivered (default PROCESSED).
   Commitment commitment = 2;
+  // RECEIVED level only: deliver transactions in UpdateBatch messages. The first transaction that becomes
+  // available is sent at once; transactions that follow it closely are grouped into one message. The
+  // transactions and their order are the same as without batching; only the number of messages differs.
+  // Recommended for clients with a high per-message cost (Python, Node.js).
+  bool batch = 3;
 }
 message TransactionFilter {
   // Matching is scoped to LOG EMITTER addresses. Raw 20-byte addresses.
@@ -91,7 +96,14 @@ message SubscribeUpdate {
     // source disconnects or reconnects: a reconciliation boundary for RECEIVED events.
     // PROCESSED and CONFIRMED delivery continues.
     SourceStatus source_status = 8;
+    // Consecutive transaction updates, when the subscription sets batch.
+    UpdateBatch batch = 9;
   }
+}
+// Each element is a complete update (filters, stream_epoch, sequence, transaction), exactly as it would be
+// delivered without batching; the enclosing update carries nothing else.
+message UpdateBatch {
+  repeated SubscribeUpdate updates = 1;
 }
 message SourceStatus {
   Commitment commitment = 1;

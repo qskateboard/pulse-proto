@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.3.0 — 2026-09-24
+
+- `Subscription.batch` (3) and `SubscribeUpdate.batch` (9, new message `UpdateBatch`): on a `RECEIVED`
+  subscription, transactions arrive grouped, each element being the complete update that would otherwise be
+  sent on its own. The first transaction is sent at once, the ones that closely follow it are grouped; the
+  set and order of transactions are unchanged. Meant for clients with a high per-message cost such as
+  Python `grpcio`. Off by default: clients that do not set it receive exactly what they received before.
+  Code that builds `Subscription` with an exhaustive struct literal (Rust `prost`) needs
+  `..Default::default()` or `batch: false` after regenerating.
+
 ## v1.2.0 — 2026-09-20
 
 - `Pulse.SendTransaction`: submit a signed transaction through Eira and, with `wait_for_received`,
