@@ -1,0 +1,17 @@
+[package]
+name = "pulse-example"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+tonic = "0.14"
+tonic-prost = "0.14"
+prost = "0.14"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "time", "sync"] }
+tokio-stream = "0.1"
+
+[build-dependencies]
+tonic-prost-build = "0.14"
+# a protoc binary for the build, so nothing has to be installed
+protoc-bin-vendored = "3"

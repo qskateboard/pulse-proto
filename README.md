@@ -5,7 +5,9 @@ chain id 4663). This repository is the source of truth for the public schema; th
 [eiranodes.dev/docs/pulse](https://eiranodes.dev/docs/pulse) and in
 [robinhood-feed-bench](https://github.com/qskateboard/robinhood-feed-bench) are pulled from here.
 
-- Endpoint: `pulse.eiranodes.dev:443`, TLS, service `robin.pulse.v1.Pulse`.
+- Endpoint: `pulse.eiranodes.dev:8443`, plaintext gRPC (no TLS), service `robin.pulse.v1.Pulse`. Connections
+  are accepted from the source IP registered for your plan.
+- Examples: runnable subscribers in Rust, Go, Python and Node.js in [examples/](examples).
 - Documentation: commitment levels, filters, limits, delivery guarantees and client examples in
   Rust, Go, TypeScript and Python are at [eiranodes.dev/docs/pulse](https://eiranodes.dev/docs/pulse);
   a first connection in five minutes at [eiranodes.dev/docs/quickstart](https://eiranodes.dev/docs/quickstart).
@@ -20,16 +22,12 @@ protoc -I proto --go_out=. proto/pulse.proto            # Go
 tonic_prost_build::compile_protos("proto/pulse.proto")  # Rust (build.rs)
 ```
 
-`grpcurl` works against the endpoint directly: see the quickstart for the exact invocation.
+`grpcurl -plaintext` works against the endpoint directly: see the quickstart for the exact invocation.
 
 ## Sending transactions
 
-`SendTransaction` (v1.2.0) takes a signed transaction and returns its hash; with `wait_for_received`
-it also returns the block and position at which Eira observed it at `RECEIVED` level, usually well
-before the receipt is available. A definite rejection by the sequencer comes back as
-`INVALID_ARGUMENT` or `FAILED_PRECONDITION` with the sequencer's text; `UNAVAILABLE` means the
-outcome is unknown and the receipt must be checked before the nonce is reused. Send never retries
-on its own.
+`SendTransaction` (v1.2.0) is part of the schema but is not served on the plaintext endpoint. Submit signed
+transactions through [Eira Send over HTTP](https://eiranodes.dev/docs/send-http).
 
 ## Versioning
 
