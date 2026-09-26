@@ -1,16 +1,25 @@
-# pulse-proto
+# Eira Pulse — Robinhood Chain gRPC transaction stream
 
-Protobuf schema of **Eira Pulse**, the gRPC transaction stream for Robinhood Chain (Arbitrum Nitro,
-chain id 4663). This repository is the source of truth for the public schema; the copies on
+Protobuf schema and client examples for **[Eira Pulse](https://eiranodes.dev/robinhood-chain-transaction-feed)**, a
+low-latency gRPC transaction feed for Robinhood Chain (Arbitrum Nitro, chain id 4663). Pulse delivers every
+transaction the moment the sequencer orders it (RECEIVED), its executed logs before the block is sealed
+(PROCESSED) and the sealed block (CONFIRMED), with address filters, over one subscription. Robinhood Chain has
+no public mempool, so RECEIVED is the earliest point at which a transaction is visible
+([how that works](https://eiranodes.dev/robinhood-chain-mempool)).
+
+This repository is the source of truth for the public schema; the copies on
 [eiranodes.dev/docs/pulse](https://eiranodes.dev/docs/pulse) and in
 [robinhood-feed-bench](https://github.com/qskateboard/robinhood-feed-bench) are pulled from here.
 
 - Endpoint: `pulse.eiranodes.dev:8443`, plaintext gRPC (no TLS), service `robin.pulse.v1.Pulse`. Connections
-  are accepted from the source IP registered for your plan.
+  are accepted from the source IP registered for your plan ([plans](https://eiranodes.dev/pricing), access via
+  [Telegram](https://t.me/eiranodes_bot)).
 - Examples: runnable subscribers in Rust, Go, Python and Node.js in [examples/](examples).
 - Documentation: commitment levels, filters, limits, delivery guarantees and client examples in
   Rust, Go, TypeScript and Python are at [eiranodes.dev/docs/pulse](https://eiranodes.dev/docs/pulse);
   a first connection in five minutes at [eiranodes.dev/docs/quickstart](https://eiranodes.dev/docs/quickstart).
+- Measurements: dated results at [eiranodes.dev/docs/benchmarks](https://eiranodes.dev/docs/benchmarks); run
+  your own with [robinhood-feed-bench](https://github.com/qskateboard/robinhood-feed-bench).
 
 ## Using it
 
