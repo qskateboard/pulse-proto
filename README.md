@@ -15,9 +15,11 @@ This repository is the source of truth for the public schema; the copies on
   are accepted from the source IP registered for your plan ([plans](https://eiranodes.dev/pricing), access via
   [Telegram](https://t.me/eiranodes_bot)).
 - Examples: runnable subscribers in Rust, Go, Python and Node.js in [examples/](examples).
-- Documentation: commitment levels, filters, limits, delivery guarantees and client examples in
-  Rust, Go, TypeScript and Python are at [eiranodes.dev/docs/pulse](https://eiranodes.dev/docs/pulse);
-  a first connection in five minutes at [eiranodes.dev/docs/quickstart](https://eiranodes.dev/docs/quickstart).
+- Documentation: an overview of the stream, its filters and a comparison with JSON-RPC WebSocket at
+  [eiranodes.dev/robinhood-chain-grpc](https://eiranodes.dev/robinhood-chain-grpc); commitment levels, filters,
+  limits, delivery guarantees and client examples in Rust, Go, TypeScript and Python at
+  [eiranodes.dev/docs/pulse](https://eiranodes.dev/docs/pulse); a first connection in five minutes at
+  [eiranodes.dev/docs/quickstart](https://eiranodes.dev/docs/quickstart).
 - Measurements: dated results at [eiranodes.dev/docs/benchmarks](https://eiranodes.dev/docs/benchmarks); run
   your own with [robinhood-feed-bench](https://github.com/qskateboard/robinhood-feed-bench).
 
